@@ -113,6 +113,7 @@ main() {
         build)   cmd_build "$@" ;;
         remix)   cmd_remix "$@" ;;
         kbuild)  cmd_kbuild "$@" ;;
+        xm)      cmd_xm "$@" ;;
         config)  cmd_config "$@" ;;
         patch)   cmd_patch "$@" ;;
         initrd)  cmd_initrd "$@" ;;
@@ -133,6 +134,7 @@ main() {
 cmd_build()   { source "${LKF_ROOT}/core/build.sh";   build_main "$@"; }
 cmd_remix()   { source "${LKF_ROOT}/core/remix.sh";   remix_main "$@"; }
 cmd_kbuild()  { source "${LKF_ROOT}/core/kbuild.sh";  kbuild_main "$@"; }
+cmd_xm()      { source "${LKF_ROOT}/core/xm.sh";      xm_main "$@"; }
 cmd_config()  { source "${LKF_ROOT}/core/config.sh";  config_main "$@"; }
 cmd_patch()   { source "${LKF_ROOT}/core/patch.sh";   patch_main "$@"; }
 cmd_initrd()  { source "${LKF_ROOT}/core/initrd.sh";  initrd_main "$@"; }
