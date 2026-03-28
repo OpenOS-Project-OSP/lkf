@@ -19,11 +19,12 @@ SETS=()
 # ── Argument parsing ──────────────────────────────────────────────────────────
 
 usage() {
+    local code="${1:-0}"
     echo "Usage: $0 --version <kver> [--set <set>] [--dir <dir>]"
     echo "  --version  Kernel version, e.g. 6.6.30"
     echo "  --set      Patch set: aufs, rt, xanmod, cachyos, all (default: all)"
     echo "  --dir      Output directory (default: script directory)"
-    exit 1
+    exit "${code}"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -31,12 +32,12 @@ while [[ $# -gt 0 ]]; do
         --version) KVER="$2"; shift 2 ;;
         --set)     SETS+=("$2"); shift 2 ;;
         --dir)     PATCHES_DIR="$2"; shift 2 ;;
-        -h|--help) usage ;;
-        *) echo "Unknown argument: $1"; usage ;;
+        -h|--help) usage 0 ;;
+        *) echo "Unknown argument: $1"; usage 1 ;;
     esac
 done
 
-[[ -z "$KVER" ]] && { echo "Error: --version is required"; usage; }
+[[ -z "$KVER" ]] && { echo "Error: --version is required"; usage 1; }
 [[ ${#SETS[@]} -eq 0 ]] && SETS=("all")
 
 # Expand "all"

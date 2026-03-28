@@ -56,6 +56,7 @@ check:
 	@echo "Running lkf self-tests..."
 	@bash tests/test_detect.sh
 	@bash tests/test_config.sh
+	@bash tests/test_integration.sh
 	@echo "All tests passed."
 
 clean:
