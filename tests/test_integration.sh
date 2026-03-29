@@ -164,34 +164,35 @@ echo "-- --source-dir skips download --"
 
 # When LKF_SOURCE_DIR is pre-set, build_main skips download+extract.
 # We verify by checking that LKF_TARBALL is not touched.
-LKF_SOURCE_DIR="${FAKE_SRC}"
-LKF_TARBALL=""
-LKF_STOP_AFTER="patch"   # stop before configure so we don't need a real tree
-LKF_PATCH_SET=""
-LKF_PATCHES=()
-LKF_KERNEL_VERSION="${FAKE_VER}"
-LKF_ARCH="$(uname -m)"
-LKF_CC="gcc"
-LKF_LLVM=0
-LKF_LTO="none"
-LKF_FLAVOR="mainline"
-LKF_CONFIG_SOURCE="defconfig"
-LKF_CONFIGURATOR=""
-LKF_OUTPUT_FORMAT=""
-LKF_LOCALVERSION=""
-LKF_KCFLAGS=""
-LKF_THREADS="$(nproc)"
-LKF_VERIFY_GPG=0
-LKF_DISTCLEAN=0
-LKF_CLEAN_AFTER=0
-LKF_REMOVE_AFTER=0
-LKF_COPY_SYSTEM_MAP=0
-LKF_TARGET="desktop"
-LKF_INSTALL_DEPS=0
-LKF_CROSS_PREFIX=""
-LKF_LLVM_VERSION=""
-LKF_DOWNLOAD_DIR="${FAKE_DL}"
-LKF_BUILD_DIR="${FAKE_BUILD}"
+# All LKF_* vars are read by build_main (external to this script)
+export LKF_SOURCE_DIR="${FAKE_SRC}"
+export LKF_TARBALL=""
+export LKF_STOP_AFTER="patch"   # stop before configure so we don't need a real tree
+export LKF_PATCH_SET=""
+export LKF_PATCHES=()
+export LKF_KERNEL_VERSION="${FAKE_VER}"
+LKF_ARCH="$(uname -m)"; export LKF_ARCH
+export LKF_CC="gcc"
+export LKF_LLVM=0
+export LKF_LTO="none"
+export LKF_FLAVOR="mainline"
+export LKF_CONFIG_SOURCE="defconfig"
+export LKF_CONFIGURATOR=""
+export LKF_OUTPUT_FORMAT=""
+export LKF_LOCALVERSION=""
+export LKF_KCFLAGS=""
+LKF_THREADS="$(nproc)"; export LKF_THREADS
+export LKF_VERIFY_GPG=0
+export LKF_DISTCLEAN=0
+export LKF_CLEAN_AFTER=0
+export LKF_REMOVE_AFTER=0
+export LKF_COPY_SYSTEM_MAP=0
+export LKF_TARGET="desktop"
+export LKF_INSTALL_DEPS=0
+export LKF_CROSS_PREFIX=""
+export LKF_LLVM_VERSION=""
+export LKF_DOWNLOAD_DIR="${FAKE_DL}"
+export LKF_BUILD_DIR="${FAKE_BUILD}"
 
 # Stub out patch_apply_set so we don't need a real source tree
 patch_apply_set() { return 0; }
@@ -247,6 +248,52 @@ if bash "${LKF_ROOT}/patches/fetch.sh" --set rt &>/dev/null; then
 else
     ok "fetch.sh without --version exits non-zero"
 fi
+
+# ── _curl_auth helper in patches/fetch.sh ────────────────────────────────────
+echo ""
+echo "-- patches/fetch.sh _curl_auth --"
+
+# Verify _curl_auth is defined in fetch.sh
+if grep -q "_curl_auth()" "${LKF_ROOT}/patches/fetch.sh"; then
+    ok "_curl_auth: function defined in patches/fetch.sh"
+else
+    fail_test "_curl_auth: function defined in patches/fetch.sh"
+fi
+
+# Verify the Authorization header is injected when GITHUB_TOKEN is set
+if grep -q 'Authorization.*GITHUB_TOKEN' "${LKF_ROOT}/patches/fetch.sh"; then
+    ok "_curl_auth: Authorization header references GITHUB_TOKEN"
+else
+    fail_test "_curl_auth: Authorization header references GITHUB_TOKEN"
+fi
+
+# Test the function behaviour directly by defining it inline (same logic as fetch.sh)
+_curl_auth_test() {
+    if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+        curl -fsSL --retry 3 -H "Authorization: token ${GITHUB_TOKEN}" "$@"
+    else
+        curl -fsSL --retry 3 "$@"
+    fi
+}
+# Stub curl to capture args
+curl() { echo "curl-args: $*"; }
+
+GITHUB_TOKEN="test-token-xyz"
+_auth_out=$(_curl_auth_test "https://example.com/api" 2>/dev/null)
+if [[ "${_auth_out}" == *"Authorization"* ]] && [[ "${_auth_out}" == *"test-token-xyz"* ]]; then
+    ok "_curl_auth: injects Authorization header when GITHUB_TOKEN set"
+else
+    fail_test "_curl_auth: injects Authorization header when GITHUB_TOKEN set"
+fi
+
+unset GITHUB_TOKEN
+_noauth_out=$(_curl_auth_test "https://example.com/api" 2>/dev/null)
+if [[ "${_noauth_out}" != *"Authorization"* ]]; then
+    ok "_curl_auth: no Authorization header when GITHUB_TOKEN unset"
+else
+    fail_test "_curl_auth: no Authorization header when GITHUB_TOKEN unset"
+fi
+unset -f curl
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo ""

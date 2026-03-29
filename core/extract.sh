@@ -96,7 +96,12 @@ extract_main() {
 extract_detect_type() {
     local file="$1"
     local magic
-    magic=$(xxd -l 4 "${file}" 2>/dev/null | head -1 | awk '{print $2$3}')
+    # Read first 4 bytes as hex; prefer xxd, fall back to od (POSIX)
+    if command -v xxd &>/dev/null; then
+        magic=$(xxd -l 4 "${file}" 2>/dev/null | head -1 | awk '{print $2$3}')
+    else
+        magic=$(od -A n -N 4 -t x1 "${file}" 2>/dev/null | tr -d ' \n')
+    fi
 
     # ELF magic: 7f454c46
     if [[ "${magic}" == "7f454c46" ]]; then

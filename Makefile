@@ -23,8 +23,15 @@ install:
 	@echo "Installing lkf to $(PREFIX)..."
 	install -d $(DESTDIR)$(BINDIR)
 	install -d $(DESTDIR)$(DATADIR)
-	install -m 755 lkf.sh $(DESTDIR)$(BINDIR)/lkf
-	cp -r core ci config profiles patches tools $(DESTDIR)$(DATADIR)/
+	# Install data files (modules, profiles, patches, examples, nix env)
+	cp -r core ci config profiles patches examples nix $(DESTDIR)$(DATADIR)/
+	@[ -d tools ] && cp -r tools $(DESTDIR)$(DATADIR)/ || true
+	# Install wrapper that sets LKF_ROOT to the installed data directory
+	printf '#!/usr/bin/env bash\nexport LKF_ROOT="%s"\nexec bash "%s/lkf.sh" "$$@"\n' \
+		"$(DESTDIR)$(DATADIR)" "$(DESTDIR)$(DATADIR)" \
+		> $(DESTDIR)$(BINDIR)/lkf
+	install -m 755 lkf.sh $(DESTDIR)$(DATADIR)/lkf.sh
+	chmod 755 $(DESTDIR)$(BINDIR)/lkf
 	@echo "Installed. Run: lkf --help"
 
 uninstall:
@@ -68,6 +75,8 @@ check:
 	@bash tests/test_toolchain.sh
 	@bash tests/test_profile.sh
 	@bash tests/test_ci.sh
+	@bash tests/test_extract.sh
+	@bash tests/test_lkf.sh
 	@echo "All tests passed."
 
 lint:
