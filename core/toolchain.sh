@@ -96,6 +96,89 @@ declare -A _DEPS_APK=(
     [python3]="python3"
 )
 
+declare -A _DEPS_ZYPPER=(
+    [gcc]="gcc"
+    [gcc-c++]="gcc-c++"
+    [make]="make"
+    [bison]="bison"
+    [flex]="flex"
+    [ncurses-devel]="ncurses-devel"
+    [libopenssl-devel]="libopenssl-devel"
+    [libelf-devel]="libelf-devel"
+    [bc]="bc"
+    [lz4]="lz4"
+    [zstd]="zstd"
+    [rsync]="rsync"
+    [cpio]="cpio"
+    [xz]="xz"
+    [bzip2]="bzip2"
+    [git]="git"
+    [perl]="perl"
+    [python3]="python3"
+)
+
+declare -A _DEPS_EMERGE=(
+    [gcc]="sys-devel/gcc"
+    [make]="sys-devel/make"
+    [bison]="sys-devel/bison"
+    [flex]="sys-devel/flex"
+    [ncurses]="sys-libs/ncurses"
+    [openssl]="dev-libs/openssl"
+    [elfutils]="dev-libs/elfutils"
+    [bc]="sys-apps/bc"
+    [lz4]="app-arch/lz4"
+    [zstd]="app-arch/zstd"
+    [rsync]="net-misc/rsync"
+    [cpio]="app-arch/cpio"
+    [xz]="app-arch/xz-utils"
+    [bzip2]="app-arch/bzip2"
+    [git]="dev-vcs/git"
+    [perl]="dev-lang/perl"
+    [python]="dev-lang/python"
+)
+
+declare -A _DEPS_XBPS=(
+    [base-devel]="base-devel"
+    [bison]="bison"
+    [flex]="flex"
+    [ncurses-devel]="ncurses-devel"
+    [openssl-devel]="openssl-devel"
+    [libelf-devel]="libelf-devel"
+    [bc]="bc"
+    [lz4]="lz4"
+    [zstd]="zstd"
+    [rsync]="rsync"
+    [cpio]="cpio"
+    [xz]="xz"
+    [bzip2]="bzip2"
+    [git]="git"
+    [make]="make"
+    [gcc]="gcc"
+    [perl]="perl"
+    [python3]="python3"
+)
+
+declare -A _DEPS_EOPKG=(
+    [system.devel]="system.devel"
+    [bison]="bison"
+    [flex]="flex"
+    [ncurses-devel]="ncurses-devel"
+    [openssl-devel]="openssl-devel"
+    [libelf-devel]="libelf-devel"
+    [bc]="bc"
+    [lz4]="lz4"
+    [zstd]="zstd"
+    [rsync]="rsync"
+    [cpio]="cpio"
+    [xz]="xz"
+    [bzip2]="bzip2"
+    [git]="git"
+    [make]="make"
+    [gcc]="gcc"
+    [perl]="perl"
+    [python3]="python3"
+)
+
 # LLVM/Clang additional deps
 declare -A _DEPS_LLVM_APT=(
     [clang]="clang"
@@ -111,6 +194,30 @@ declare -A _DEPS_LLVM_PACMAN=(
 )
 
 declare -A _DEPS_LLVM_DNF=(
+    [clang]="clang"
+    [llvm]="llvm"
+    [lld]="lld"
+)
+
+declare -A _DEPS_LLVM_ZYPPER=(
+    [clang]="clang"
+    [llvm]="llvm"
+    [lld]="lld"
+)
+
+declare -A _DEPS_LLVM_EMERGE=(
+    [clang]="sys-devel/clang"
+    [llvm]="sys-devel/llvm"
+    [lld]="sys-devel/lld"
+)
+
+declare -A _DEPS_LLVM_XBPS=(
+    [clang]="clang"
+    [llvm]="llvm"
+    [lld]="lld"
+)
+
+declare -A _DEPS_LLVM_EOPKG=(
     [clang]="clang"
     [llvm]="llvm"
     [lld]="lld"
@@ -160,16 +267,19 @@ toolchain_install_deps() {
             ;;
         zypper)
             sudo zypper install -y \
-                gcc make bison flex ncurses-devel libopenssl-devel \
-                libelf-devel bc lz4 zstd rsync cpio xz bzip2 git perl python3
+                "${_DEPS_ZYPPER[@]}"
             ;;
         emerge)
             sudo emerge --ask=n \
-                sys-devel/gcc sys-devel/make sys-devel/bison sys-devel/flex \
-                sys-libs/ncurses dev-libs/openssl dev-libs/elfutils \
-                sys-apps/bc app-arch/lz4 app-arch/zstd net-misc/rsync \
-                app-arch/cpio app-arch/xz-utils app-arch/bzip2 dev-vcs/git \
-                dev-lang/perl dev-lang/python
+                "${_DEPS_EMERGE[@]}"
+            ;;
+        xbps)
+            sudo xbps-install -Sy \
+                "${_DEPS_XBPS[@]}"
+            ;;
+        eopkg)
+            sudo eopkg install -y \
+                "${_DEPS_EOPKG[@]}"
             ;;
         nix)
             # On NixOS / with Nix, prefer nix-shell with the provided shell.nix.
@@ -223,6 +333,18 @@ toolchain_install_llvm() {
         dnf)
             sudo dnf install -y "${_DEPS_LLVM_DNF[@]}"
             ;;
+        zypper)
+            sudo zypper install -y "${_DEPS_LLVM_ZYPPER[@]}"
+            ;;
+        emerge)
+            sudo emerge --ask=n "${_DEPS_LLVM_EMERGE[@]}"
+            ;;
+        xbps)
+            sudo xbps-install -Sy "${_DEPS_LLVM_XBPS[@]}"
+            ;;
+        eopkg)
+            sudo eopkg install -y "${_DEPS_LLVM_EOPKG[@]}"
+            ;;
         *)
             lkf_warn "Install clang, llvm, lld manually for your distro."
             ;;
@@ -238,6 +360,11 @@ toolchain_install_debug_deps() {
         apt)    sudo apt-get install -y --no-install-recommends "${_DEPS_DEBUG_APT[@]}" ;;
         pacman) sudo pacman -Sy --noconfirm --needed "${_DEPS_DEBUG_PACMAN[@]}" ;;
         dnf)    sudo dnf install -y "${_DEPS_DEBUG_DNF[@]}" ;;
+        zypper) sudo zypper install -y qemu gdb ;;
+        emerge) sudo emerge --ask=n app-emulation/qemu dev-debug/gdb ;;
+        xbps)   sudo xbps-install -Sy qemu gdb ;;
+        eopkg)  sudo eopkg install -y qemu gdb ;;
+        apk)    sudo apk add --no-cache qemu gdb ;;
         *)      lkf_warn "Install qemu, gdb, debootstrap manually." ;;
     esac
 }
@@ -263,6 +390,7 @@ toolchain_install_cross() {
             case "${target_arch}" in
                 aarch64) sudo pacman -Sy --noconfirm --needed aarch64-linux-gnu-gcc ;;
                 arm)     sudo pacman -Sy --noconfirm --needed arm-linux-gnueabihf-gcc ;;
+                riscv64) sudo pacman -Sy --noconfirm --needed riscv64-linux-gnu-gcc ;;
                 *)       lkf_warn "Install cross-compiler for ${target_arch} from AUR." ;;
             esac
             ;;
@@ -270,7 +398,30 @@ toolchain_install_cross() {
             case "${target_arch}" in
                 aarch64) sudo dnf install -y gcc-aarch64-linux-gnu ;;
                 arm)     sudo dnf install -y gcc-arm-linux-gnu ;;
+                riscv64) sudo dnf install -y gcc-riscv64-linux-gnu ;;
                 *)       lkf_warn "No dnf cross-compiler known for ${target_arch}" ;;
+            esac
+            ;;
+        zypper)
+            case "${target_arch}" in
+                aarch64) sudo zypper install -y cross-aarch64-gcc ;;
+                arm)     sudo zypper install -y cross-arm-gcc ;;
+                *)       lkf_warn "No zypper cross-compiler known for ${target_arch}" ;;
+            esac
+            ;;
+        emerge)
+            case "${target_arch}" in
+                aarch64) sudo emerge --ask=n cross-aarch64-unknown-linux-gnu/gcc ;;
+                arm)     sudo emerge --ask=n cross-armv7a-unknown-linux-gnueabihf/gcc ;;
+                riscv64) sudo emerge --ask=n cross-riscv64-unknown-linux-gnu/gcc ;;
+                *)       lkf_warn "Install cross-compiler for ${target_arch} via crossdev." ;;
+            esac
+            ;;
+        xbps)
+            case "${target_arch}" in
+                aarch64) sudo xbps-install -Sy cross-aarch64-linux-gnu ;;
+                arm)     sudo xbps-install -Sy cross-armv7l-linux-gnueabihf ;;
+                *)       lkf_warn "No xbps cross-compiler known for ${target_arch}" ;;
             esac
             ;;
         *)
