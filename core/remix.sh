@@ -75,60 +75,110 @@ REMIX.TOML EXAMPLE:
 EOF
 }
 
-# ── Minimal TOML parser ───────────────────────────────────────────────────────
-# Handles the subset used by remix.toml:
-#   [section]
-#   key = "string"
-#   key = true | false
-#   key = 123
-#   key = ["a", "b", "c"]   (simple string arrays only)
-# Returns values via remix_get <section> <key>
+# ── TOML parser ───────────────────────────────────────────────────────────────
+# Strategy (in order of preference):
+#   1. Python 3.11+ stdlib tomllib  — full TOML 1.0 compliance
+#   2. Python tomli package         — full TOML 1.0 compliance (3.6–3.10)
+#   3. Pure-Bash fallback           — handles the remix.toml subset:
+#        [section], key = "string"|true|false|integer|["array"]
+#
+# python3 is already a hard kernel build dependency, so options 1/2 add
+# no new install requirements on any real build host.
+#
+# Values are stored in _REMIX_TOML[section.key] and retrieved via remix_get.
 
 declare -A _REMIX_TOML=()
 
+# Python snippet: flatten a parsed TOML dict into "section.key=value" lines
+_REMIX_TOML_PY='
+import sys, os
+
+# Try stdlib tomllib (3.11+), then tomli, then fail gracefully
+try:
+    import tomllib
+    _open = lambda f: open(f, "rb")
+    _load = tomllib.load
+except ImportError:
+    try:
+        import tomli as tomllib
+        _open = lambda f: open(f, "rb")
+        _load = tomllib.load
+    except ImportError:
+        sys.exit(2)   # signal: fall back to Bash parser
+
+path = sys.argv[1]
+with _open(path) as f:
+    data = _load(f)
+
+def emit(prefix, obj):
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            emit(f"{prefix}.{k}" if prefix else k, v)
+    elif isinstance(obj, list):
+        # Emit space-separated string for simple arrays; skip arrays of tables
+        if all(not isinstance(i, dict) for i in obj):
+            print(f"{prefix}={\" \".join(str(i) for i in obj)}")
+    elif isinstance(obj, bool):
+        print(f"{prefix}={1 if obj else 0}")
+    else:
+        # Escape newlines so each entry is one line
+        print(f"{prefix}={str(obj).replace(chr(10), \" \")}")
+
+emit("", data)
+'
+
 remix_parse_toml() {
     local file="$1"
-    local section=""
 
+    # Try Python first
+    if command -v python3 &>/dev/null; then
+        local py_out
+        py_out=$(python3 -c "${_REMIX_TOML_PY}" "${file}" 2>/dev/null)
+        local py_exit=$?
+        if [[ "${py_exit}" -eq 0 ]]; then
+            # Populate _REMIX_TOML from "section.key=value" lines
+            while IFS='=' read -r k v; do
+                [[ -z "${k}" ]] && continue
+                _REMIX_TOML["${k}"]="${v}"
+            done <<< "${py_out}"
+            return 0
+        elif [[ "${py_exit}" -ne 2 ]]; then
+            # tomllib/tomli found but parse failed — surface the error
+            python3 -c "${_REMIX_TOML_PY}" "${file}" >&2 || true
+            lkf_die "TOML parse error in ${file}"
+        fi
+        # exit 2 → neither tomllib nor tomli available; fall through to Bash
+    fi
+
+    # Pure-Bash fallback — handles the remix.toml subset
+    local section=""
     while IFS= read -r line || [[ -n "${line}" ]]; do
-        # Strip comments and leading/trailing whitespace
         line="${line%%#*}"
         line="${line#"${line%%[![:space:]]*}"}"
         line="${line%"${line##*[![:space:]]}"}"
         [[ -z "${line}" ]] && continue
 
-        # Section header
         if [[ "${line}" =~ ^\[([a-zA-Z_][a-zA-Z0-9_]*)\]$ ]]; then
             section="${BASH_REMATCH[1]}"
             continue
         fi
 
-        # key = value
         if [[ "${line}" =~ ^([a-zA-Z_][a-zA-Z0-9_]*)\ *=\ *(.+)$ ]]; then
             local key="${BASH_REMATCH[1]}"
             local val="${BASH_REMATCH[2]}"
-            val="${val%"${val##*[![:space:]]}"}"  # rtrim
+            val="${val%"${val##*[![:space:]]}"}"
 
-            # String: "value"
-            if [[ "${val}" =~ ^\"(.*)\"$ ]]; then
-                val="${BASH_REMATCH[1]}"
-            # Boolean
-            elif [[ "${val}" == "true" ]]; then
-                val="1"
-            elif [[ "${val}" == "false" ]]; then
-                val="0"
-            # Array: [] or ["a", "b"]  → space-separated (empty → "")
-            elif [[ "${val}" == "[]" ]]; then
-                val=""
+            if   [[ "${val}" =~ ^\"(.*)\"$ ]]; then val="${BASH_REMATCH[1]}"
+            elif [[ "${val}" == "true" ]];      then val="1"
+            elif [[ "${val}" == "false" ]];     then val="0"
+            elif [[ "${val}" == "[]" ]];        then val=""
             elif [[ "${val}" =~ ^\[(.+)\]$ ]]; then
-                local arr_raw="${BASH_REMATCH[1]}"
-                val=""
-                # Extract quoted strings from the array
+                local arr_raw="${BASH_REMATCH[1]}" arr_val=""
                 while [[ "${arr_raw}" =~ \"([^\"]+)\" ]]; do
-                    val+="${BASH_REMATCH[1]} "
+                    arr_val+="${BASH_REMATCH[1]} "
                     arr_raw="${arr_raw#*\"${BASH_REMATCH[1]}\"}"
                 done
-                val="${val% }"  # rtrim trailing space
+                val="${arr_val% }"
             fi
 
             _REMIX_TOML["${section}.${key}"]="${val}"
