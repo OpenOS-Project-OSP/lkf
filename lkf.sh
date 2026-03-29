@@ -22,7 +22,9 @@
 
 set -euo pipefail
 
-LKF_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# LKF_ROOT: prefer an explicit env override (set by `make install` wrapper or
+# the user), fall back to the directory containing this script.
+LKF_ROOT="${LKF_ROOT:-"$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"}"
 LKF_VERSION="0.1.0"
 
 # shellcheck source=core/lib.sh

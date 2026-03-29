@@ -26,11 +26,13 @@ install:
 	# Install data files (modules, profiles, patches, examples, nix env)
 	cp -r core ci config profiles patches examples nix $(DESTDIR)$(DATADIR)/
 	@[ -d tools ] && cp -r tools $(DESTDIR)$(DATADIR)/ || true
-	# Install wrapper that sets LKF_ROOT to the installed data directory
+	# Install lkf.sh into the data dir
+	install -m 755 lkf.sh $(DESTDIR)$(DATADIR)/lkf.sh
+	# Write a wrapper that sets LKF_ROOT so lkf.sh finds its modules
+	# regardless of where the data dir is located on the filesystem.
 	printf '#!/usr/bin/env bash\nexport LKF_ROOT="%s"\nexec bash "%s/lkf.sh" "$$@"\n' \
 		"$(DESTDIR)$(DATADIR)" "$(DESTDIR)$(DATADIR)" \
 		> $(DESTDIR)$(BINDIR)/lkf
-	install -m 755 lkf.sh $(DESTDIR)$(DATADIR)/lkf.sh
 	chmod 755 $(DESTDIR)$(BINDIR)/lkf
 	@echo "Installed. Run: lkf --help"
 
@@ -83,7 +85,8 @@ lint:
 	@echo "Running ShellCheck..."
 	@command -v shellcheck >/dev/null 2>&1 || \
 		{ echo "shellcheck not found — install it or run: make lint-install"; exit 1; }
-	@find . -name '*.sh' | sort | xargs shellcheck --severity=warning --format=gcc
+	@find . -name '*.sh' | sort | \
+		xargs -I{} shellcheck --severity=warning --format=gcc {}
 	@echo "ShellCheck passed."
 
 lint-install:

@@ -34,9 +34,9 @@ jobs:
         run: sudo apt-get install -y --no-install-recommends shellcheck
 
       - name: Lint shell scripts
-        run: |
-          find . -name '*.sh' | sort | \
-            xargs shellcheck --severity=warning --format=gcc
+        # make lint runs the same per-file shellcheck invocation used locally,
+        # keeping CI and the developer workflow in sync.
+        run: make lint
 
   remix-dry-run:
     name: lkf remix --dry-run
@@ -46,13 +46,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Verify remix.toml parses cleanly
-        run: |
-          bash -c '
-            LKF_ROOT="${GITHUB_WORKSPACE}"
-            source core/lib.sh
-            source core/remix.sh
-            remix_main --file remix.toml --dry-run
-          '
+        # Run through the real lkf.sh entry point so the full module-load
+        # path is exercised, not just a hand-rolled source chain.
+        run: bash lkf.sh remix --file remix.toml --dry-run
 
   tkg-fetch-validate:
     name: tkg patch fetch (6.12)
