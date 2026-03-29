@@ -57,25 +57,50 @@ detect_pkg_manager() {
     local distro
     distro=$(detect_distro)
     case "${distro}" in
-        ubuntu|debian|linuxmint|pop|elementary|kali|raspbian)
+        # apt-based: Debian family
+        ubuntu|debian|linuxmint|mint|pop|elementary|kali|raspbian|raspios| \
+        mxlinux|mx|zorin|deepin|parrot|tails|bodhi|peppermint|antix| \
+        devuan|sparky|q4os|emmabuntus|trisquel|pureos|endless|feren| \
+        nitrux|lite|lubuntu|xubuntu|kubuntu|ubuntu-mate|ubuntumate| \
+        ubuntustudio|ubuntukylin|ubuntuunity|regolith|vanillaos|vanilla| \
+        linuxfx|voyager|kodachi|dragonos|bunsen|bunsenlabs|pika|pikaos| \
+        biglinux|rhino|funos|wattos|avlinux|makululinux|proxmox|blendos| \
+        commodore|sdesk|anduinos|tuxedo|kdenlive|kdeneon|neon|ultimate| \
+        dr-parted|damnsmall|damn-small)
             echo "apt" ;;
-        arch|manjaro|endeavouros|garuda|artix)
+        # pacman-based: Arch family
+        arch|manjaro|endeavouros|garuda|artix|blackarch|parabola| \
+        hyperbola|crystal|rebornos|archcraft|archbang|bluestar|chakra| \
+        kaos|cachyos|mabox|regata)
             echo "pacman" ;;
-        fedora|rhel|centos|rocky|almalinux)
+        # dnf-based: Red Hat / Fedora family
+        fedora|rhel|centos|rocky|almalinux|ol|oraclelinux|amzn|amazon| \
+        mageia|openmandriva|nobara|ultramarine|qubes|bazzite)
             echo "dnf" ;;
-        opensuse*|sles)
+        # zypper-based: SUSE family
+        opensuse*|sles|suse)
             echo "zypper" ;;
-        alpine)
+        # apk-based: Alpine family
+        alpine|postmarketos|adelie)
             echo "apk" ;;
+        # xbps-based: Void Linux
         void)
             echo "xbps" ;;
-        gentoo)
+        # emerge-based: Gentoo family
+        gentoo|funtoo|calculate|sabayon)
             echo "emerge" ;;
+        # eopkg-based: Solus
+        solus)
+            echo "eopkg" ;;
+        # nix-based: NixOS
         nixos)
             echo "nix" ;;
+        # slackware-based (pkgtool)
+        slackware|porteus|porteux|austrumi)
+            echo "pkgtool" ;;
         *)
-            # Fallback: probe for known package managers
-            for pm in apt dnf pacman zypper apk xbps-install emerge; do
+            # Fallback: probe for known package managers in priority order
+            for pm in apt dnf pacman zypper apk xbps-install emerge eopkg pkgtool; do
                 command -v "${pm}" &>/dev/null && echo "${pm}" && return
             done
             # nix-env presence → nix
