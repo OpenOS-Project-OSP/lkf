@@ -29,7 +29,8 @@ jobs:
             libcap-dev libgcrypt20-dev libgmpxx4ldbl \
             libcurl4-openssl-dev libjson-c-dev \
             libglib2.0-dev libgtest-dev libgmp-dev \
-            libboost-dev libboost-system-dev libboost-filesystem-dev  # Added missing dependencies
+            libboost-dev libboost-system-dev libboost-filesystem-dev \
+            libboost-thread-dev libboost-regex-dev  # Added missing dependencies
 
       - name: Ensure make is installed
         run: sudo apt-get install -y make  # Ensure make is installed
